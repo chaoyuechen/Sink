@@ -1,6 +1,11 @@
 packages:
   - docs
 
+# Windows checkouts on filesystems that do not resolve pnpm's junctions need a
+# flat node_modules; the hoisted linker keeps `nuxt` and its nested packages
+# resolvable there. Linux/CI behaviour is equivalent, only less strict.
+nodeLinker: hoisted
+
 strictPeerDependencies: true
 overrides:
   source-map-resolve@0.6.0>decode-uri-component: 0.2.2

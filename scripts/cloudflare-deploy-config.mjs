@@ -18,6 +18,16 @@ const optionalName = z.preprocess(
   z.string().trim().min(1).optional(),
 )
 
+const hostname = z.preprocess(
+  value => typeof value === 'string' && value.trim() === '' ? undefined : value,
+  z.string().trim()
+    .transform(value => value.replace(/^[a-z]+:\/\//i, '').replace(/\/.*$/, '').toLowerCase())
+    .refine(value => /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(value), {
+      message: 'must be a bare hostname such as sink.example.com (no scheme, path, or port)',
+    })
+    .optional(),
+)
+
 const deployEnvSchema = z.object({
   DEPLOY_D1_DATABASE_ID: z.string().trim().min(1),
   DEPLOY_KV_NAMESPACE_ID: z.string().trim().min(1),
@@ -28,6 +38,10 @@ const deployEnvSchema = z.object({
   // Optional Wrangler preview bucket; falls back to DEPLOY_R2_BUCKET_NAME when R2 is enabled
   DEPLOY_R2_PREVIEW_BUCKET_NAME: optionalName,
   DEPLOY_ANALYTICS_DATASET: defaultName,
+  // Optional Worker name override; defaults to the name in wrangler.jsonc
+  DEPLOY_WORKER_NAME: optionalName,
+  // Optional Custom Domain, e.g. sink.example.com; omitted keeps workers.dev only
+  DEPLOY_CUSTOM_DOMAIN: hostname,
 })
 
 async function loadEnv() {
@@ -85,6 +99,23 @@ if (env.DEPLOY_R2_BUCKET_NAME) {
 }
 else {
   config.r2_buckets = config.r2_buckets.filter(({ binding }) => binding !== 'R2')
+}
+
+if (env.DEPLOY_WORKER_NAME)
+  config.name = env.DEPLOY_WORKER_NAME
+
+// A Custom Domain is the only way to serve the Worker on your own hostname, and
+// it has to be attached at deploy time, so it cannot come from Worker variables.
+if (env.DEPLOY_CUSTOM_DOMAIN) {
+  config.routes = [
+    {
+      pattern: env.DEPLOY_CUSTOM_DOMAIN,
+      custom_domain: true,
+    },
+  ]
+}
+else {
+  delete config.routes
 }
 
 await writeFile(outputPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8')

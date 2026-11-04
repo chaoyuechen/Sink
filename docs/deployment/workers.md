@@ -69,4 +69,21 @@ Start a build from `master` and wait until it finishes.
 Until storage setup finishes, creating links may fail with “storage not ready” (HTTP 423).
 :::
 
+## 5. Serve Sink on your own domain
+
+`wrangler.jsonc` never holds account-specific values. To serve the Worker on a Custom Domain, add one more build variable next to the others:
+
+| Variable               | Value             |
+| ---------------------- | ----------------- |
+| `DEPLOY_CUSTOM_DOMAIN` | `sink.example.com` |
+
+`pnpm deploy:worker` rewrites it into the generated `wrangler.deploy.jsonc` as a `routes` entry with `custom_domain: true`, so Wrangler attaches the hostname and its certificate during the deploy. The zone must be on the same Cloudflare account and the hostname must not already have a conflicting DNS record. Leave the variable empty to stay on `workers.dev`.
+
+To change settings after the first deploy:
+
+- **Runtime values** (`NUXT_REDIRECT_STATUS_CODE`, `NUXT_NOT_FOUND_REDIRECT`, `NUXT_CF_*`, …) — edit them under **Settings → Variables and Secrets**. Cloudflare publishes a new version immediately, no rebuild required.
+- **Build values** (`NUXT_PUBLIC_*`, `DEPLOY_*`) — change the variable and start a new build; public values are compiled into the UI.
+
+`pnpm build` also runs on Windows, macOS, and Linux: `scripts/build.mjs` and `scripts/postbuild.mjs` replace the previous bash-only inline commands.
+
 Later upgrades: [Upgrading Sink](./upgrading).

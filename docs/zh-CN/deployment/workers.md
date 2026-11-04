@@ -69,4 +69,21 @@ description: 通过 Git 集成将 Sink 部署到 Cloudflare Workers。
 存储初始化完成前，创建链接可能失败，并提示「存储未就绪」（HTTP 423）。
 :::
 
+## 5. 绑定自己的域名
+
+`wrangler.jsonc` 里始终不含账户相关的值。要让 Worker 跑在自己的域名上，在其他构建变量之外再加一个：
+
+| 变量                   | 值                |
+| ---------------------- | ----------------- |
+| `DEPLOY_CUSTOM_DOMAIN` | `sink.example.com` |
+
+`pnpm deploy:worker` 会把它写进生成的 `wrangler.deploy.jsonc`，形成带 `custom_domain: true` 的 `routes`，部署时 Wrangler 会绑定该主机名并签发证书。域名所在 zone 必须属于同一个 Cloudflare 账户，且该主机名不能已有冲突的 DNS 记录。留空则继续使用 `workers.dev` 子域名。
+
+首次部署后修改配置：
+
+- **运行时值**（`NUXT_REDIRECT_STATUS_CODE`、`NUXT_NOT_FOUND_REDIRECT`、`NUXT_CF_*` 等）——在 **设置 → 变量与密钥** 中修改，Cloudflare 会立即发布新版本，无需重新构建。
+- **构建期值**（`NUXT_PUBLIC_*`、`DEPLOY_*`）——修改变量后重新构建；公开值会被编译进前端。
+
+`pnpm build` 现在在 Windows、macOS、Linux 上都能运行：`scripts/build.mjs` 与 `scripts/postbuild.mjs` 取代了原先只能在 bash 里执行的内联命令。
+
 后续升级见[升级 Sink](./upgrading)。
